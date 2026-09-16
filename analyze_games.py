@@ -31,6 +31,7 @@ DEFAULT_PLAYER = "stevec-guitar"
 DEFAULT_DEPTH = 16
 DEFAULT_OUTPUT = "analysis.csv"
 MATE_SCORE = 100_000
+PROGRESS_WIDTH = 30
 
 
 def score_for_player(info, color):
@@ -44,7 +45,7 @@ def mate_for_player(info, color):
 
 
 def principal_variation(board, info, max_moves=6):
-    """Convert the engine PV to a short SAN string."""
+    """Convert the engine principal variation to a short SAN string."""
     pv = info.get("pv", [])
     temp = board.copy()
     result = []
@@ -60,16 +61,9 @@ def principal_variation(board, info, max_moves=6):
 
 
 def game_phase(board):
-    """
-    Roughly classify the position as opening, middlegame, or endgame.
-
-    This is deliberately simple. We can improve the classification
-    later if it proves useful.
-    """
+    """Roughly classify a position as opening, middlegame, or endgame."""
     if board.fullmove_number <= 10:
         return "opening"
-
-    non_pawn_material = 0
 
     values = {
         chess.KNIGHT: 3,
@@ -78,11 +72,14 @@ def game_phase(board):
         chess.QUEEN: 9,
     }
 
-    for piece_type, value in values.items():
-        non_pawn_material += (
+    non_pawn_material = sum(
+        (
             len(board.pieces(piece_type, chess.WHITE))
             + len(board.pieces(piece_type, chess.BLACK))
-        ) * value
+        )
+        * value
+        for piece_type, value in values.items()
+    )
 
     if non_pawn_material <= 20:
         return "endgame"
@@ -92,10 +89,10 @@ def game_phase(board):
 
 def classify_loss(loss):
     """
-    Give a simple human-friendly classification to centipawn loss.
+    Give a simple classification to centipawn loss.
 
-    The exact boundaries are intentionally configurable later; these
-    aren't intended to reproduce Chess.com's move classifications.
+    These classifications are intended for aggregate analysis and do
+    not attempt to reproduce Chess.com's classifications.
     """
     if loss < 20:
         return "good"
@@ -107,7 +104,7 @@ def classify_loss(loss):
 
 
 def material_balance(board, color):
-    """Material balance in pawns from the player's perspective."""
+    """Return material balance in pawns from the player's perspective."""
     values = {
         chess.PAWN: 1,
         chess.KNIGHT: 3,
@@ -125,7 +122,56 @@ def material_balance(board, color):
     return total
 
 
+def load_games(filename):
+    """Yield games from a PGN file."""
+    with open(filename, encoding="utf-8") as pgn:
+        while True:
+            game = chess.pgn.read_game(pgn)
+
+            if game is None:
+                break
+
+            yield game
+
+
+def count_games(filename):
+    """Count games in a PGN so progress can be reported."""
+    return sum(1 for _ in load_games(filename))
+
+
+def game_title(game):
+    """Return a human-readable title for a game."""
+    white = game.headers.get("White", "?")
+    black = game.headers.get("Black", "?")
+    return f"{white} vs {black}"
+
+
+def show_progress(current, total, title, width=PROGRESS_WIDTH):
+    """Display an in-place progress bar and current game title."""
+    fraction = current / total if total else 1.0
+    completed = int(width * fraction)
+
+    bar = "█" * completed + "░" * (width - completed)
+
+    status = (
+        f"[{bar}] "
+        f"{current:>{len(str(total))}}/{total}  "
+        f"{title}"
+    )
+
+    # Return to the beginning of the line, then erase the entire line
+    # before writing the new status. This prevents characters from a
+    # longer previous game title from remaining on screen.
+    print(f"\r\033[2K{status}", end="", flush=True)
+
+
+def clear_progress():
+    """Erase the progress line."""
+    print("\r\033[2K", end="", flush=True)
+
+
 def analyze_game(engine, game, player, depth):
+    """Analyze every move made by player in one game."""
     white = game.headers.get("White", "")
     black = game.headers.get("Black", "")
 
@@ -163,11 +209,16 @@ def analyze_game(engine, game, player, depth):
         is_en_passant = board.is_en_passant(move)
 
         moved_piece = board.piece_at(move.from_square)
-        piece = chess.piece_name(moved_piece.piece_type) if moved_piece else ""
+        piece = (
+            chess.piece_name(moved_piece.piece_type)
+            if moved_piece
+            else ""
+        )
 
         material_before = material_balance(board, player_color)
 
-        # Evaluate the position and determine Stockfish's preferred move.
+        # Evaluate the position before the player's move. This also
+        # tells us what Stockfish considers the best continuation.
         before = engine.analyse(
             board,
             chess.engine.Limit(depth=depth),
@@ -179,7 +230,6 @@ def analyze_game(engine, game, player, depth):
         pv = before.get("pv", [])
         best_move = pv[0] if pv else None
         best_san = board.san(best_move) if best_move else ""
-
         best_pv = principal_variation(board, before)
 
         played_best_move = move == best_move
@@ -188,7 +238,7 @@ def analyze_game(engine, game, player, depth):
 
         gives_check = board.is_check()
 
-        # Evaluate the resulting position.
+        # Evaluate the position resulting from the player's move.
         after = engine.analyse(
             board,
             chess.engine.Limit(depth=depth),
@@ -197,6 +247,8 @@ def analyze_game(engine, game, player, depth):
         after_score = score_for_player(after, player_color)
         mate_after = mate_for_player(after, player_color)
 
+        # Search depth can cause tiny inconsistencies between the two
+        # evaluations, so don't record a negative centipawn loss.
         loss = max(0, before_score - after_score)
 
         material_after = material_balance(board, player_color)
@@ -227,8 +279,12 @@ def analyze_game(engine, game, player, depth):
                 "eval_after": after_score,
                 "centipawn_loss": loss,
                 "classification": classify_loss(loss),
-                "mate_before": mate_before if mate_before is not None else "",
-                "mate_after": mate_after if mate_after is not None else "",
+                "mate_before": (
+                    mate_before if mate_before is not None else ""
+                ),
+                "mate_after": (
+                    mate_after if mate_after is not None else ""
+                ),
                 "capture": is_capture,
                 "check": gives_check,
                 "castling": is_castling,
@@ -240,17 +296,6 @@ def analyze_game(engine, game, player, depth):
         )
 
     return rows
-
-
-def load_games(filename):
-    with open(filename, encoding="utf-8") as pgn:
-        while True:
-            game = chess.pgn.read_game(pgn)
-
-            if game is None:
-                break
-
-            yield game
 
 
 def main():
@@ -303,6 +348,19 @@ def main():
         )
         sys.exit(1)
 
+    print(f"Reading {args.pgn}...", end="", flush=True)
+    total_games_in_pgn = count_games(args.pgn)
+
+    if total_games_in_pgn == 0:
+        print()
+        print(
+            f"No games found in {args.pgn}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    print(f" {total_games_in_pgn} games")
+
     fields = [
         "date",
         "event",
@@ -352,19 +410,19 @@ def main():
             newline="",
             encoding="utf-8",
         ) as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fields)
+            writer = csv.DictWriter(
+                csvfile,
+                fieldnames=fields,
+            )
             writer.writeheader()
 
             for game in load_games(args.pgn):
                 total_games += 1
 
-                white = game.headers.get("White", "?")
-                black = game.headers.get("Black", "?")
-
-                print(
-                    f"\rAnalyzing game {total_games}: {white} vs {black}",
-                    end="",
-                    flush=True,
+                show_progress(
+                    total_games,
+                    total_games_in_pgn,
+                    game_title(game),
                 )
 
                 rows = analyze_game(
@@ -376,7 +434,6 @@ def main():
 
                 for row in rows:
                     writer.writerow(row)
-
                     total_moves += 1
 
                     classification = row["classification"]
@@ -388,8 +445,12 @@ def main():
                     elif classification == "inaccuracy":
                         total_inaccuracies += 1
 
-    print()
-    print(f"Analyzed {total_games} games and {total_moves} moves.")
+    clear_progress()
+
+    print(
+        f"Analyzed {total_games} games and "
+        f"{total_moves} moves."
+    )
     print(
         f"{total_blunders} blunders, "
         f"{total_mistakes} mistakes, "
