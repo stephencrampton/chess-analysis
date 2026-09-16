@@ -140,10 +140,19 @@ def count_games(filename):
 
 
 def game_title(game):
-    """Return a human-readable title for a game."""
+    """Return a human-readable title with ratings and winner."""
     white = game.headers.get("White", "?")
     black = game.headers.get("Black", "?")
-    return f"{white} vs {black}"
+    white_rating = game.headers.get("WhiteElo", "?")
+    black_rating = game.headers.get("BlackElo", "?")
+    result = game.headers.get("Result", "*")
+
+    if result == "1-0":
+        white += "*"
+    elif result == "0-1":
+        black += "*"
+
+    return f"{white} ({white_rating}) vs {black} ({black_rating})"
 
 
 def show_progress(current, total, title, width=PROGRESS_WIDTH):
@@ -153,11 +162,7 @@ def show_progress(current, total, title, width=PROGRESS_WIDTH):
 
     bar = "█" * completed + "░" * (width - completed)
 
-    status = (
-        f"[{bar}] "
-        f"{current:>{len(str(total))}}/{total}  "
-        f"{title}"
-    )
+    status = f"[{bar}] {current:>{len(str(total))}}/{total}  {title}"
 
     # Return to the beginning of the line, then erase the entire line
     # before writing the new status. This prevents characters from a
@@ -209,11 +214,7 @@ def analyze_game(engine, game, player, depth):
         is_en_passant = board.is_en_passant(move)
 
         moved_piece = board.piece_at(move.from_square)
-        piece = (
-            chess.piece_name(moved_piece.piece_type)
-            if moved_piece
-            else ""
-        )
+        piece = chess.piece_name(moved_piece.piece_type) if moved_piece else ""
 
         material_before = material_balance(board, player_color)
 
@@ -279,12 +280,8 @@ def analyze_game(engine, game, player, depth):
                 "eval_after": after_score,
                 "centipawn_loss": loss,
                 "classification": classify_loss(loss),
-                "mate_before": (
-                    mate_before if mate_before is not None else ""
-                ),
-                "mate_after": (
-                    mate_after if mate_after is not None else ""
-                ),
+                "mate_before": (mate_before if mate_before is not None else ""),
+                "mate_after": (mate_after if mate_after is not None else ""),
                 "capture": is_capture,
                 "check": gives_check,
                 "castling": is_castling,
@@ -447,10 +444,7 @@ def main():
 
     clear_progress()
 
-    print(
-        f"Analyzed {total_games} games and "
-        f"{total_moves} moves."
-    )
+    print(f"Analyzed {total_games} games and {total_moves} moves.")
     print(
         f"{total_blunders} blunders, "
         f"{total_mistakes} mistakes, "
