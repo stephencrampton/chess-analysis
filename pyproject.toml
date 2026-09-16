@@ -1,0 +1,14 @@
+[project]
+name = "chess-analysis"
+version = "0.1.0"
+description = "Download recent Chess.com games as PGN"
+requires-python = ">=3.10"
+dependencies = [
+    "python-chess>=1.999",
+    "requests>=2.32.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.0",
+]
