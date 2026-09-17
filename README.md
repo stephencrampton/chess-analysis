@@ -171,11 +171,13 @@ For each player move, the timestamped analysis CSV includes information such as:
 
 Keeping this richer dataset makes it possible to look for correlations and recurring weaknesses rather than treating each engine mistake as an isolated event.
 
-## Future Pattern Analysis
+## Pattern Analysis
 
-The next stage of the project is to analyze the timestamped analysis CSV across many games.
+The summarize command analyzes the timestamped CSV and compares segments with
+the overall baseline. It reports recurring weaknesses only when there are
+enough samples and the segment is meaningfully worse than the baseline.
 
-Potential reports include:
+The report checks:
 
 * error rate and average centipawn loss by game phase;
 * error rate by piece;
@@ -185,7 +187,8 @@ Potential reports include:
 * frequency of large evaluation swings;
 * recurring positions or tactical themes;
 * performance by opponent strength; and
-* changes in these measures over time.
+* changes in these measures over time; and
+* time spent on a move.
 
 The aim is to turn engine output into observations such as:
 
@@ -217,10 +220,9 @@ uv run python -m chess_analysis.summarize analysis_20260917_064318.csv
 uv run python -m chess_analysis.summarize analysis_20260917_064318.csv --min-samples 50 --limit 3
 ```
 
-This first report uses transparent segment comparisons rather than a predictive
-model. A regression or clustering model can be added later once there are enough
-games to validate that its findings are more useful than these directly
-interpretable rates.
+The report uses transparent segment comparisons rather than a predictive
+model, so each focus area includes the segment rate, overall baseline, average
+centipawn loss, and a suggested training action.
 
 ## Visualize Insights
 
@@ -244,6 +246,18 @@ played move and Stockfish's preferred move, and see both moves highlighted on
 the position's chessboard. It is generated as a self-contained HTML file, so no
 development server is required.
 
+## Tests
+
+Run the unit tests and branch-aware coverage report:
+
+```bash
+make test
+```
+
+The suite uses small in-memory games and mocked engine responses, so it does
+not require Stockfish or network access. Coverage excludes command-line entry
+point boilerplate and fails if total coverage falls below 80%.
+
 ## Make Commands
 
 ```text
@@ -251,7 +265,9 @@ make                         Show available commands
 make help                    Show available commands
 make install                 Create the uv environment and install dependencies
 make download                Download games for stevec-guitar
+make download MONTHS=12      Download games from the last 12 months
 make analyze                 Analyze the newest downloaded PGN
+make analyze PGN=file.pgn    Analyze a specific PGN
 make analyze WORKERS=8       Analyze games with 8 Stockfish workers
 make summarize               Summarize the newest analysis CSV
 make summarize ANALYSIS=...  Summarize a specific analysis CSV
@@ -259,11 +275,13 @@ make visualize               Generate a standalone browser UI
 make visualize ANALYSIS=...  Visualize a specific analysis CSV
 make all                     Download and analyze games
 make format                  Format Python files with Ruff
+make test                   Run unit tests with coverage
 make clean                   Remove the uv environment and cached files
 ```
 
-Downloaded PGNs, analysis CSVs, and generated visualization HTML files are
-ignored by Git because they are timestamped local outputs.
+Downloaded PGNs, analysis CSVs, generated visualization HTML files, Python
+cache directories, and coverage output are ignored by Git because they are
+local generated artifacts.
 
 For direct module options:
 

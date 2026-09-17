@@ -7,13 +7,15 @@ WORKERS ?= 4
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install clean format download analyze summarize visualize all
+.PHONY: help install clean format test download analyze summarize visualize all
 
 help:
 	@echo 'Available commands:'
 	@printf '  %-24s %s\n' 'make install' 'Create the uv environment and install dependencies'
 	@printf '  %-24s %s\n' 'make download' 'Download 3 months of games'
+	@printf '  %-24s %s\n' 'make download MONTHS=12' 'Download a custom number of months'
 	@printf '  %-24s %s\n' 'make analyze' 'Analyze the newest PGN with Stockfish'
+	@printf '  %-24s %s\n' 'make analyze PGN=file.pgn' 'Analyze a specific PGN'
 	@printf '  %-24s %s\n' 'make analyze WORKERS=8' 'Analyze games with 8 workers'
 	@printf '  %-24s %s\n' 'make summarize' 'Summarize the newest analysis CSV'
 	@printf '  %-24s %s\n' 'make summarize ANALYSIS=file.csv' 'Summarize a specific analysis CSV'
@@ -21,6 +23,7 @@ help:
 	@printf '  %-24s %s\n' 'make visualize ANALYSIS=file.csv' 'Visualize a specific analysis CSV'
 	@printf '  %-24s %s\n' 'make all' 'Download and analyze games'
 	@printf '  %-24s %s\n' 'make format' 'Format Python files with Ruff'
+	@printf '  %-24s %s\n' 'make test' 'Run unit tests with coverage'
 	@printf '  %-24s %s\n' 'make clean' 'Remove the uv environment and cached files'
 
 install:
@@ -30,11 +33,15 @@ install:
 clean:
 	$(UV) cache clean
 	rm -rf .venv
+	rm -f .coverage* coverage.xml
 	find . -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.mypy_cache' -o -name '.ruff_cache' \) -prune -exec rm -rf {} +
 	find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 
 format:
 	$(UV) run ruff format .
+
+test:
+	$(UV) run pytest --cov=chess_analysis --cov-report=term-missing
 
 download:
 	@username=$$(printf '%s' "$(USERNAME)" | tr '[:upper:]' '[:lower:]'); \

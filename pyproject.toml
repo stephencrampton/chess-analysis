@@ -10,5 +10,22 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
     "ruff>=0.11.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["chess_analysis"]
+
+[tool.coverage.report]
+fail_under = 80
+exclude_also = [
+    "def main\\(",
+    "if __name__ == .__main__.:",
 ]
