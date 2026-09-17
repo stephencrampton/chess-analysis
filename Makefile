@@ -1,6 +1,6 @@
 UV ?= uv
 USERNAME ?= stevec-guitar
-MONTHS ?= 12
+MONTHS ?= 3
 PGN ?=
 
 .DEFAULT_GOAL := help
@@ -10,7 +10,7 @@ PGN ?=
 help:
 	@echo 'Available commands:'
 	@printf '  %-24s %s\n' 'make install' 'Create the uv environment and install dependencies'
-	@printf '  %-24s %s\n' 'make download' 'Download 12 months of games'
+	@printf '  %-24s %s\n' 'make download' 'Download 3 months of games'
 	@printf '  %-24s %s\n' 'make analyze' 'Analyze the newest PGN with Stockfish'
 	@printf '  %-24s %s\n' 'make all' 'Download and analyze games'
 	@printf '  %-24s %s\n' 'make format' 'Format Python files with Ruff'

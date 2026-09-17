@@ -33,7 +33,7 @@ def parse_clock(comment):
     hours, minutes, seconds = parts
 
     try:
-        return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
     except ValueError:
         return None
 

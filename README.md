@@ -52,7 +52,7 @@ Download games with the default Chess.com username (`stevec-guitar`):
 make download
 ```
 
-The default target downloads 12 months of games and writes them to a timestamped file such as:
+The default target downloads 3 months of games and writes them to a timestamped file such as:
 
 ```text
 games_20260916_143012.pgn
