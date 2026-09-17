@@ -21,7 +21,7 @@ help:
 	@printf '  %-36s %s\n' 'make summarize ANALYSIS=file.csv' 'Summarize a specific analysis CSV'
 	@printf '  %-36s %s\n' 'make visualize' 'Generate a standalone browser UI'
 	@printf '  %-36s %s\n' 'make visualize ANALYSIS=file.csv' 'Visualize a specific analysis CSV'
-	@printf '  %-36s %s\n' 'make all' 'Download and analyze games'
+	@printf '  %-36s %s\n' 'make all' 'Download, analyze, summarize, and visualize games'
 	@printf '  %-36s %s\n' 'make format' 'Format Python files with Ruff'
 	@printf '  %-36s %s\n' 'make test' 'Run unit tests with coverage'
 	@printf '  %-36s %s\n' 'make clean' 'Remove the uv environment and cached files'
@@ -65,5 +65,4 @@ visualize:
 	if [ -z "$$analysis" ]; then echo 'No analysis CSV found; pass ANALYSIS=filename.csv' >&2; exit 1; fi; \
 	$(UV) run python -m chess_analysis.visualize "$$analysis"
 
-all: download
-	$(MAKE) analyze
+all: download analyze summarize visualize

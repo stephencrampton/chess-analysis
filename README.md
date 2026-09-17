@@ -69,11 +69,14 @@ make download USERNAME=MagnusCarlsen MONTHS=12
 
 ## Analyze Games
 
-Download and analyze the latest games in one step:
+Run the full workflow for the latest games in one step:
 
 ```bash
 make all
 ```
+
+This downloads games, analyzes the newest PGN, summarizes the resulting CSV,
+and generates the browser-based visualization for the latest analysis.
 
 To analyze a specific downloaded PGN, pass its filename:
 
@@ -273,7 +276,7 @@ make summarize               Summarize the newest analysis CSV
 make summarize ANALYSIS=...  Summarize a specific analysis CSV
 make visualize               Generate a standalone browser UI
 make visualize ANALYSIS=...  Visualize a specific analysis CSV
-make all                     Download and analyze games
+make all                     Download, analyze, summarize, and visualize games
 make format                  Format Python files with Ruff
 make test                   Run unit tests with coverage
 make clean                   Remove the uv environment and cached files
