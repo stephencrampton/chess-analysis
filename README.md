@@ -81,6 +81,8 @@ To analyze a specific downloaded PGN, pass its filename:
 make analyze PGN=games_20260916_143012.pgn
 ```
 
+Without `PGN=...`, `make analyze` selects the newest timestamped download.
+
 Analysis can take some time because Stockfish evaluates the position before and after every move made by the selected player.
 
 While running, the analyzer displays a progress bar and the game currently being analyzed:
@@ -191,7 +193,7 @@ make                         Show available commands
 make help                    Show available commands
 make install                 Create the uv environment and install dependencies
 make download                Download games for stevec-guitar
-make analyze                 Analyze a PGN with Stockfish
+make analyze                 Analyze the newest downloaded PGN
 make all                     Download and analyze games
 make format                  Format Python files with Ruff
 make clean                   Remove the uv environment and cached files

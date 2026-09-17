@@ -9,7 +9,7 @@ patterns.
 
 Example:
 
-    uv run python -m chess_analysis.analyze_games games.pgn
+    uv run python -m chess_analysis.analyze_games games_YYYYMMDD_HHMMSS.pgn
 
 Defaults:
     player:     stevec-guitar
