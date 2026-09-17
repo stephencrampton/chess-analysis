@@ -106,6 +106,17 @@ To analyze a different PGN file:
 make analyze PGN=other-games.pgn
 ```
 
+Analysis runs in parallel across game-level worker processes. By default it
+uses 4 Stockfish workers; adjust this for your machine with `WORKERS=...`:
+
+```bash
+make analyze PGN=other-games.pgn WORKERS=8
+```
+
+Each worker owns its own Stockfish process. More workers are not always faster
+if they compete for CPU resources, so start with the number of physical cores
+available for Stockfish.
+
 ## Analysis Methodology
 
 The analyzer reads each game from the PGN and examines only moves made by the selected player.
@@ -186,6 +197,53 @@ or:
 
 Those observations can then suggest specific things to study or habits to change.
 
+Generate a short report of the strongest recurring focus areas from the newest
+analysis CSV:
+
+```bash
+make summarize
+```
+
+The report compares each segment with the overall baseline. It currently checks
+game phase, piece, color, material balance, move stage, captures, checks, and
+time spent on a move. It reports only segments with at least 30 moves and a
+meaningfully higher serious-error rate or capped average centipawn loss, which
+keeps small samples and mate scores from dominating the recommendations.
+
+To summarize a specific CSV or change the thresholds:
+
+```bash
+uv run python -m chess_analysis.summarize analysis_20260917_064318.csv
+uv run python -m chess_analysis.summarize analysis_20260917_064318.csv --min-samples 50 --limit 3
+```
+
+This first report uses transparent segment comparisons rather than a predictive
+model. A regression or clustering model can be added later once there are enough
+games to validate that its findings are more useful than these directly
+interpretable rates.
+
+## Visualize Insights
+
+Create a standalone HTML tool for exploring the focus areas and the positions
+that produced them:
+
+```bash
+make visualize
+```
+
+The command selects the newest analysis CSV and writes a timestamped
+`visualization_*.html` file. Open that file in a browser. To use a specific
+analysis file:
+
+```bash
+make visualize ANALYSIS=analysis_20260917_064318.csv
+```
+
+The UI lets you select an insight, step through matching positions, inspect the
+played move and Stockfish's preferred move, and see both moves highlighted on
+the position's chessboard. It is generated as a self-contained HTML file, so no
+development server is required.
+
 ## Make Commands
 
 ```text
@@ -194,14 +252,24 @@ make help                    Show available commands
 make install                 Create the uv environment and install dependencies
 make download                Download games for stevec-guitar
 make analyze                 Analyze the newest downloaded PGN
+make analyze WORKERS=8       Analyze games with 8 Stockfish workers
+make summarize               Summarize the newest analysis CSV
+make summarize ANALYSIS=...  Summarize a specific analysis CSV
+make visualize               Generate a standalone browser UI
+make visualize ANALYSIS=...  Visualize a specific analysis CSV
 make all                     Download and analyze games
 make format                  Format Python files with Ruff
 make clean                   Remove the uv environment and cached files
 ```
+
+Downloaded PGNs, analysis CSVs, and generated visualization HTML files are
+ignored by Git because they are timestamped local outputs.
 
 For direct module options:
 
 ```bash
 uv run python -m chess_analysis.download_games --help
 uv run python -m chess_analysis.analyze_games --help
+uv run python -m chess_analysis.summarize --help
+uv run python -m chess_analysis.visualize --help
 ```

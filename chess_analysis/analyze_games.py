@@ -19,17 +19,47 @@ Defaults:
 
 import argparse
 import csv
+import os
 import shutil
 import sys
+from concurrent.futures import ProcessPoolExecutor
 
 from chess_analysis.engine import open_engine
 from chess_analysis.filenames import timestamped_filename
-from chess_analysis.games import count_games, load_games
+from chess_analysis.games import load_games
 from chess_analysis.move_analysis import analyze_game
 
 DEFAULT_PLAYER = "stevec-guitar"
 DEFAULT_DEPTH = 16
+DEFAULT_WORKERS = min(4, os.cpu_count() or 1)
 PROGRESS_WIDTH = 30
+_worker_engine = None
+
+
+def close_worker_engine():
+    """Close the Stockfish process owned by this worker, if any."""
+    global _worker_engine
+    if _worker_engine is not None:
+        _worker_engine.quit()
+        _worker_engine = None
+
+
+def initialize_worker(stockfish):
+    """Open one independent Stockfish process in each pool worker."""
+    global _worker_engine
+
+    _worker_engine = open_engine(stockfish)
+
+
+def analyze_game_in_worker(task):
+    """Analyze one game using the worker's process-local engine."""
+    game, player, depth = task
+    return analyze_game(_worker_engine, game, player, depth)
+
+
+def shutdown_worker():
+    """Quit the worker's Stockfish process before the pool exits."""
+    close_worker_engine()
 
 
 def game_title(game):
@@ -103,7 +133,17 @@ def main():
         help="CSV output file (default: timestamped analysis file)",
     )
 
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help=f"Stockfish worker processes (default: {DEFAULT_WORKERS})",
+    )
+
     args = parser.parse_args()
+    if args.workers < 1:
+        parser.error("--workers must be positive")
+
     if args.output is None:
         args.output = timestamped_filename("analysis", "csv")
 
@@ -121,7 +161,8 @@ def main():
         sys.exit(1)
 
     print(f"Reading {args.pgn}...", end="", flush=True)
-    total_games_in_pgn = count_games(args.pgn)
+    games = list(load_games(args.pgn))
+    total_games_in_pgn = len(games)
 
     if total_games_in_pgn == 0:
         print()
@@ -172,49 +213,51 @@ def main():
     total_mistakes = 0
     total_inaccuracies = 0
 
-    with (
-        open_engine(stockfish) as engine,
-        open(
-            args.output,
-            "w",
-            newline="",
-            encoding="utf-8",
-        ) as csvfile,
-    ):
+    with open(
+        args.output,
+        "w",
+        newline="",
+        encoding="utf-8",
+    ) as csvfile:
         writer = csv.DictWriter(
             csvfile,
             fieldnames=fields,
         )
         writer.writeheader()
 
-        for game in load_games(args.pgn):
-            total_games += 1
+        tasks = ((game, args.player, args.depth) for game in games)
+        with ProcessPoolExecutor(
+            max_workers=args.workers,
+            initializer=initialize_worker,
+            initargs=(stockfish,),
+        ) as executor:
+            results = executor.map(analyze_game_in_worker, tasks)
 
-            show_progress(
-                total_games,
-                total_games_in_pgn,
-                game_title(game),
-            )
+            for game, rows in zip(games, results):
+                total_games += 1
 
-            rows = analyze_game(
-                engine,
-                game,
-                args.player,
-                args.depth,
-            )
+                show_progress(
+                    total_games,
+                    total_games_in_pgn,
+                    game_title(game),
+                )
 
-            for row in rows:
-                writer.writerow(row)
-                total_moves += 1
+                for row in rows:
+                    writer.writerow(row)
+                    total_moves += 1
 
-                classification = row["classification"]
+                    classification = row["classification"]
 
-                if classification == "blunder":
-                    total_blunders += 1
-                elif classification == "mistake":
-                    total_mistakes += 1
-                elif classification == "inaccuracy":
-                    total_inaccuracies += 1
+                    if classification == "blunder":
+                        total_blunders += 1
+                    elif classification == "mistake":
+                        total_mistakes += 1
+                    elif classification == "inaccuracy":
+                        total_inaccuracies += 1
+
+            shutdowns = [executor.submit(shutdown_worker) for _ in range(args.workers)]
+            for shutdown in shutdowns:
+                shutdown.result()
 
     clear_progress()
 

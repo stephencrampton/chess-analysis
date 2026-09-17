@@ -26,3 +26,5 @@ games.pgn
 games_*.pgn
 analysis.csv
 analysis_*.csv
+visualization.html
+visualization_*.html
