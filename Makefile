@@ -9,12 +9,12 @@ PGN ?=
 
 help:
 	@echo 'Available commands:'
-	@echo '  make install                                  Create the uv environment and install dependencies'
-	@echo '  make download                                 Download 12 months of games'
-	@echo '  make analyze                                  Analyze the newest PGN with Stockfish'
-	@echo '  make all                                      Download and analyze games'
-	@echo '  make format                                  Format Python files with Ruff'
-	@echo '  make clean                                    Remove the uv environment and cached files'
+	@printf '  %-24s %s\n' 'make install' 'Create the uv environment and install dependencies'
+	@printf '  %-24s %s\n' 'make download' 'Download 12 months of games'
+	@printf '  %-24s %s\n' 'make analyze' 'Analyze the newest PGN with Stockfish'
+	@printf '  %-24s %s\n' 'make all' 'Download and analyze games'
+	@printf '  %-24s %s\n' 'make format' 'Format Python files with Ruff'
+	@printf '  %-24s %s\n' 'make clean' 'Remove the uv environment and cached files'
 
 install:
 	@if [ ! -d .venv ]; then $(UV) venv; fi
