@@ -17,11 +17,11 @@ The intended workflow is:
 ```text
 Chess.com
     ↓
-games.pgn
+    games_YYYYMMDD_HHMMSS.pgn
     ↓
 Stockfish analysis
     ↓
-analysis.csv
+    analysis_YYYYMMDD_HHMMSS.csv
     ↓
 pattern analysis
     ↓
@@ -52,11 +52,14 @@ Download games with the default Chess.com username (`stevec-guitar`):
 make download
 ```
 
-The default target downloads 12 months of games and writes them to:
+The default target downloads 12 months of games and writes them to a timestamped file such as:
 
 ```text
-games.pgn
+games_20260916_143012.pgn
 ```
+
+The timestamp prevents a later download from overwriting an earlier one. Pass
+`--output` to choose a specific filename.
 
 Override the username or number of months:
 
@@ -66,10 +69,16 @@ make download USERNAME=MagnusCarlsen MONTHS=12
 
 ## Analyze Games
 
-Analyze the downloaded PGN with Stockfish:
+Download and analyze the latest games in one step:
 
 ```bash
-make analyze
+make all
+```
+
+To analyze a specific downloaded PGN, pass its filename:
+
+```bash
+make analyze PGN=games_20260916_143012.pgn
 ```
 
 Analysis can take some time because Stockfish evaluates the position before and after every move made by the selected player.
@@ -80,11 +89,14 @@ While running, the analyzer displays a progress bar and the game currently being
 [████████████████░░░░░░░░]  67/100  stevec-guitar vs opponent
 ```
 
-The results are written to:
+The results are written to a timestamped file such as:
 
 ```text
-analysis.csv
+analysis_20260916_143012.csv
 ```
+
+The timestamp prevents a later run from overwriting an earlier result. Pass
+`--output` to choose a specific filename.
 
 To analyze a different PGN file:
 
@@ -122,14 +134,13 @@ These classifications are intended for aggregate analysis and do **not** attempt
 
 ### Recorded information
 
-For each player move, `analysis.csv` includes information such as:
+For each player move, the timestamped analysis CSV includes information such as:
 
 * game date and result;
 * player color;
 * opponent;
 * player and opponent ratings;
-* time control;
-* ECO/opening information when available;
+* time spent on the player's previous move, time spent on the opponent's previous move, and the player's remaining time;
 * move number;
 * game phase;
 * piece moved;
@@ -149,14 +160,13 @@ Keeping this richer dataset makes it possible to look for correlations and recur
 
 ## Future Pattern Analysis
 
-The next stage of the project is to analyze `analysis.csv` across many games.
+The next stage of the project is to analyze the timestamped analysis CSV across many games.
 
 Potential reports include:
 
 * error rate and average centipawn loss by game phase;
 * error rate by piece;
 * performance as White versus Black;
-* performance by opening;
 * mistakes by move number;
 * mistakes when ahead, equal, or behind;
 * frequency of large evaluation swings;
@@ -181,15 +191,15 @@ make                         Show available commands
 make help                    Show available commands
 make install                 Create the uv environment and install dependencies
 make download                Download games for stevec-guitar
-make analyze                 Analyze games.pgn with Stockfish
+make analyze                 Analyze a PGN with Stockfish
 make all                     Download and analyze games
 make format                  Format Python files with Ruff
 make clean                   Remove the uv environment and cached files
 ```
 
-For direct script options:
+For direct module options:
 
 ```bash
-uv run python download_games.py --help
-uv run python analyze_games.py --help
+uv run python -m chess_analysis.download_games --help
+uv run python -m chess_analysis.analyze_games --help
 ```

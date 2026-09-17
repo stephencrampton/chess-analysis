@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Tool caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Generated game data and analysis output
+games.pgn
+games_*.pgn
+analysis.csv
+analysis_*.csv

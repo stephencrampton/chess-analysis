@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-import datetime
+from datetime import datetime, timezone
+
 import requests
 
+from chess_analysis.filenames import timestamped_filename
 
 API = "https://api.chess.com/pub/player/{username}/games/{year}/{month:02d}/pgn"
 
@@ -15,7 +17,7 @@ def previous_month(year, month):
 
 
 def download_games(username, months, output):
-    today = datetime.date.today()
+    today = datetime.now(timezone.utc).date()
     year, month = today.year, today.month
 
     pgns = []
@@ -57,16 +59,18 @@ def main():
     parser.add_argument(
         "--months",
         type=int,
-        default=6,
-        help="Number of months to download (default: 6)",
+        default=3,
+        help="Number of months to download (default: 3)",
     )
     parser.add_argument(
         "--output",
-        default="games.pgn",
-        help="Output PGN file (default: games.pgn)",
+        default=None,
+        help="Output PGN file (default: timestamped games file)",
     )
 
     args = parser.parse_args()
+    if args.output is None:
+        args.output = timestamped_filename("games", "pgn")
 
     download_games(
         args.username,
